@@ -6,9 +6,9 @@ A quick project to demonstrate seemingly unbounded thread creation in an edge ca
 ## How to reproduce
 
 1. Bulid and run the app.
-1. Upon launch, you should see a simple WebView with the text "Hello, World!" displayed.
-1. Open the Chrome Inspector on your desktop, and inspect the WebView.
-1. In the console, enter the following:
+2. Upon launch, you should see a simple WebView with the text "Hello, World!" displayed.
+3. Open the Chrome Inspector on your desktop, and inspect the WebView.
+4. In the console, enter the following:
 ```javascript
 function appendNewElement(id) {
     let elem = document.createElement('script');
@@ -16,8 +16,8 @@ function appendNewElement(id) {
     document.head.appendChild(elem);
 }
 ```
-1. Start a Perfetto trace on the device.
-1. Enter the following in the console:
+5. Start a Perfetto trace on the device.
+6. Enter the following in the console:
 ```javascript
 for (let i = 0; i < 100; i++) {
     appendNewElement(i);
@@ -51,7 +51,7 @@ before getting a response is causing a new thread pool to be spun up.
 
 ## Expected behavior
 
-I have a hunch that this thread creation was not expected behavior, so I added another test case to
+I have a hunch that this thread creation is not expected behavior, so I added another test case to
 the project that showed very different results. In the `MainActivity` you will see two different
 methods to construct the `WebViewClient`; the default setup will show you the thread spawning
 behavior, but repeating the steps above with the other setup shows what I think is expected
