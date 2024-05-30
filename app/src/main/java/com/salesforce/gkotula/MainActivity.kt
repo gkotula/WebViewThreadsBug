@@ -10,8 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.tracing.trace
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -50,12 +52,26 @@ class MainActivity : AppCompatActivity() {
                 url.startsWith(START_URL) -> startingHtmlResponse()
 
                 url.startsWith(FOO_URL) -> {
-                    Thread.sleep(sleepTime)
-                    return WebResourceResponse(
-                        "text/javascript",
-                        "utf-8",
-                        SCRIPT_CONTENT.byteInputStream()
-                    )
+                    trace(traceName(postfix = "_response")) {
+                        val returnStream = object : InputStream() {
+                            private val targetStream = SCRIPT_CONTENT.byteInputStream()
+                            override fun read(): Int {
+                                return targetStream.read()
+                            }
+
+                            override fun read(b: ByteArray?, off: Int, len: Int): Int {
+                                return trace(traceName(postfix = "_read")) {
+                                    super.read(b, off, len)
+                                }
+                            }
+                        }
+                        Thread.sleep(sleepTime)
+                        WebResourceResponse(
+                            "text/javascript",
+                            "utf-8",
+                            returnStream
+                        )
+                    }
                 }
 
                 else -> super.shouldInterceptRequest(view, request)
@@ -75,18 +91,29 @@ class MainActivity : AppCompatActivity() {
                 url.startsWith(START_URL) -> startingHtmlResponse()
 
                 url.startsWith(FOO_URL) -> {
-                    val returnStream = object : InputStream() {
-                        private val targetStream = SCRIPT_CONTENT.byteInputStream()
-                        private val isFirstRead = AtomicBoolean(true)
-                        override fun read(): Int {
-                            if (isFirstRead.compareAndSet(true, false)) {
-                                Log.d(TAG, "shouldInterceptRequest blocking read first time: $url")
-                                Thread.sleep(sleepTime)
+                    trace(traceName(postfix = "_response")) {
+                        val returnStream = object : InputStream() {
+                            private val targetStream = SCRIPT_CONTENT.byteInputStream()
+                            private val isFirstRead = AtomicBoolean(true)
+                            override fun read(): Int {
+                                if (isFirstRead.compareAndSet(true, false)) {
+                                    Log.d(
+                                        TAG,
+                                        "shouldInterceptRequest blocking read first time: $url"
+                                    )
+                                    Thread.sleep(sleepTime)
+                                }
+                                return targetStream.read()
                             }
-                            return targetStream.read()
+
+                            override fun read(b: ByteArray?, off: Int, len: Int): Int {
+                                return trace(traceName(postfix = "_read")) {
+                                    super.read(b, off, len)
+                                }
+                            }
                         }
+                        WebResourceResponse("text/javascript", "utf-8", returnStream)
                     }
-                    WebResourceResponse("text/javascript", "utf-8", returnStream)
                 }
 
                 else -> super.shouldInterceptRequest(view, request)
@@ -113,5 +140,10 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
         private const val SCRIPT_CONTENT = "console.log('Script loaded');"
         private const val TAG = "NKotula"
+
+        fun traceName(postfix: String? = null) = buildString {
+            append(TAG)
+            postfix?.also { append(it) }
+        }
     }
 }
