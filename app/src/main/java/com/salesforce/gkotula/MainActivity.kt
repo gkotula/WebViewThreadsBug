@@ -13,7 +13,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.tracing.trace
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -25,7 +24,13 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.my_web_view)!!
         webView.clearCache(true)
         webView.settings.javaScriptEnabled = true
+
+        /* Uncomment this line to observe behavior when shouldInterceptRequest thread is blocked
+         * _before_ returning a WebResourceResponse */
         webView.webViewClient = buildWebViewClientBlockingResponse(sleepTime = 30_000L)
+
+        /* Uncomment this line to observe behavior when shouldInterceptRequest returns a
+         * WebResourceResponse quickly, but blocks upon first read of the InputStream */
 //        webView.webViewClient = buildWebViewClientBlockingRead(sleepTime = 30_000L)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -65,7 +70,9 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
+
                         Thread.sleep(sleepTime)
+
                         WebResourceResponse(
                             "text/javascript",
                             "utf-8",
@@ -130,7 +137,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val FOO_URL = "https://foo"
-        private const val START_URL = "https://nkotula-start"
+        private const val START_URL = "https://my-start"
         private val BASIC_HTML = """
             <!DOCTYPE html>
             <html>
@@ -139,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             </html>
         """.trimIndent()
         private const val SCRIPT_CONTENT = "console.log('Script loaded');"
-        private const val TAG = "NKotula"
+        private const val TAG = "MyTag"
 
         fun traceName(postfix: String? = null) = buildString {
             append(TAG)
